@@ -1,49 +1,53 @@
 import importlib
+import subprocess
 import os
 import random
-import sys
 import time
 
+import pexpect
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
 from PyQt5.QtWidgets import QWidget, QMenu, qApp, QApplication, QSystemTrayIcon
 
-from conf import settings
+from core.ability import Ability
+from core.conf import settings
 
 
-class newWindow(QWidget):
-    def __init__(self, parent=None):
-        super(newWindow, self).__init__(parent)
-        self.setMouseTracking(False)  # 设置鼠标移动跟踪是否有效
-        self.runing = False
+class DesktopPet(QWidget):
+    """桌宠核心类"""
+    def __init__(self, parent=None, tray=False):
+        super(DesktopPet, self).__init__(parent)
+        self.walking = False
         self.busy = False
         self.initUI()
         self.startMovie()
-        self.trayMenu()   # 系统托盘
-        self.hide()
-
-    def closeEvent(self, event):
-        event.ignore()  # 忽略关闭事件
-        self.hide()  # 隐藏窗体
+        if tray:
+            self.trayMenu()   # 系统托盘
 
     def trayMenu(self):
+        """显示系统托盘"""
         tray = QSystemTrayIcon(self)
         tray.setIcon(QIcon(settings.TRAY_ICON))
         tray.show()
 
     def initUI(self):
+        """初始化窗口"""
         self.setWindowIcon(QIcon(settings.ICON))
-        self.welcomePage()
+        self.desktop = QApplication.desktop()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)  # 背景透明
 
+        self.welcomePage()
+
     def startMovie(self):
+        """定义定时器,通过定时器完成动画功能"""
         self.allActions = Action().getAllAction()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.action)
         self.timer.start(settings.MOVIE_TIME_INTERVAL * 1000)
 
     def action(self):
+        """加载动作"""
         if self.busy:
             return
         self.timer.stop()
@@ -59,26 +63,29 @@ class newWindow(QWidget):
         self.setPix(settings.INIT_PICTURE)
 
     def welcomePage(self):
-        self.desktop = QApplication.desktop()
+        """开始"""
         rect = self.desktop.availableGeometry()
         self.move(rect.right()-200, rect.height()-200)
         self.setPix(settings.INIT_PICTURE)
 
     def mousePressEvent(self, event):
+        """鼠标单击事件"""
         if self.busy:
             return
         if event.button() == Qt.LeftButton:
-            self.runing = False     # 单击 关闭跑步
+            self.walking = False     # 单击 关闭跑步
             self.busy = True
             self.mDragPosition = event.globalPos() - self.pos()
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        if self.runing is False:
+        """鼠标释放事件"""
+        if self.walking is False:
             self.setPix(settings.INIT_PICTURE)
             self.busy = False
 
-    def mouseMoveEvent(self, event):  # 鼠标键移动时调用
+    def mouseMoveEvent(self, event):
+        """鼠标移动事件"""
         if Qt.LeftButton:
             self.move(event.globalPos() - self.mDragPosition)
             moveDistance = (self.mDragPosition - event.pos()).x()
@@ -97,18 +104,23 @@ class newWindow(QWidget):
                 self.setPix(settings.MOUSE_TO_LEFT_3)
 
     def mouseDoubleClickEvent(self, QMouseEvent):
+        """鼠标双击事件, 进行walk"""
         if self.busy:
             return
         if Qt.LeftButton == QMouseEvent.button():
-            self.runing = True
-            self.run()
+            self.walking = True
+            self.walk()
 
+    def closeEvent(self, QCloseEvent):
+        """关闭事件"""
+        #  如何在walk 的时候关闭, 会导致程序坞的图标不消失,所以要先停掉walk
+        self.walking = False
 
-    def run(self):
-
+    def walk(self):
+        """桌宠 走路"""
         walk = settings.WALK
         i = 0
-        while self.runing is True:
+        while self.walking is True:
             self.move(self.pos().x() - 5, self.pos().y())
             if self.pos().x() < -100:
                 self.move(self.desktop.availableGeometry().bottomRight().x(), self.pos().y())
@@ -123,24 +135,23 @@ class newWindow(QWidget):
     def contextMenuEvent(self, e):
         """右键菜单"""
         cmenu = QMenu(self)
+        ability = Ability(self)
         act4 = cmenu.addAction("关机")
         act5 = cmenu.addAction("退出")
-        act6 = cmenu.addAction("待续")
         action = cmenu.exec_(self.mapToGlobal(e.pos()))
         if action == act5:
-            qApp.quit()
+            self.close()
         elif action == act4:
-            os.system("shutdown -p")
-        elif action == act6:
-            self.parent_window.show()
+            ability.shutdown()
 
     def paintEvent(self, QPaintEvent):
+        """绘图"""
         painter = QPainter(self)
-        # painter.setRenderHint(QPainter.Antialiasing, True)
         if hasattr(self, "pix"):
             painter.drawPixmap(self.rect(), self.pix)
 
     def setPix(self, pix):
+        """设置帧"""
         if isinstance(pix, QPixmap):
             self.pix = pix
         else:
@@ -151,13 +162,15 @@ class newWindow(QWidget):
 
 
 class Action(object):
+    """动作类, 读取action.py下的列表, 去img文件下下寻找对应的图片"""
     def __init__(self):
         self.imgDir = "./img"
         self.actionList = []
         self.picturesList = []
 
     def createPicture(self):
-        module = importlib.import_module("action")
+        """读取图片"""
+        module = importlib.import_module("core.action")
         for i in dir(module):
             if i.startswith("__"):
                 continue
@@ -165,20 +178,15 @@ class Action(object):
             self.picturesList.append(pictures)
 
     def createQpixmap(self):
+        """将图片转成Pixmap"""
         for indexI, i in enumerate(self.picturesList):
             for indexJ, j in enumerate(i):
                 self.picturesList[indexI][indexJ] = QPixmap(f"{self.imgDir}/{j}")
 
     def getAllAction(self):
+        """获取所有的动作集, 返回嵌套列表"""
         self.createPicture()
         self.createQpixmap()
         return self.picturesList
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    demo = newWindow()
-    demo.show()
-    sys.exit(app.exec())
 
 
