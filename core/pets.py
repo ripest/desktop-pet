@@ -1,14 +1,11 @@
-import importlib
-import subprocess
-import os
 import random
 import time
 
-import pexpect
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
-from PyQt5.QtWidgets import QWidget, QMenu, qApp, QApplication, QSystemTrayIcon
+from PyQt5.QtWidgets import QWidget, QMenu, QApplication, QSystemTrayIcon
 
+from core import action
 from core.ability import Ability
 from core.conf import settings
 
@@ -17,6 +14,7 @@ class DesktopPet(QWidget):
     """桌宠核心类"""
     def __init__(self, parent=None, tray=False):
         super(DesktopPet, self).__init__(parent)
+        self.imgDir = settings.SETUP_DIR / "img"
         self.walking = False
         self.busy = False
         self.initUI()
@@ -27,12 +25,12 @@ class DesktopPet(QWidget):
     def trayMenu(self):
         """显示系统托盘"""
         tray = QSystemTrayIcon(self)
-        tray.setIcon(QIcon(settings.TRAY_ICON))
+        tray.setIcon(QIcon(str(self.imgDir / settings.TRAY_ICON)))
         tray.show()
 
     def initUI(self):
         """初始化窗口"""
-        self.setWindowIcon(QIcon(settings.ICON))
+        self.setWindowIcon(QIcon(str(self.imgDir / settings.ICON)))
         self.desktop = QApplication.desktop()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)  # 背景透明
@@ -60,13 +58,13 @@ class DesktopPet(QWidget):
             time.sleep(0.5)
         self.timer.start()
         self.busy = False
-        self.setPix(settings.INIT_PICTURE)
+        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
 
     def welcomePage(self):
         """开始"""
         rect = self.desktop.availableGeometry()
         self.move(rect.right()-200, rect.height()-200)
-        self.setPix(settings.INIT_PICTURE)
+        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
 
     def mousePressEvent(self, event):
         """鼠标单击事件"""
@@ -81,7 +79,7 @@ class DesktopPet(QWidget):
     def mouseReleaseEvent(self, event):
         """鼠标释放事件"""
         if self.walking is False:
-            self.setPix(settings.INIT_PICTURE)
+            self.setPix(str(self.imgDir / settings.INIT_PICTURE))
             self.busy = False
 
     def mouseMoveEvent(self, event):
@@ -90,18 +88,18 @@ class DesktopPet(QWidget):
             self.move(event.globalPos() - self.mDragPosition)
             moveDistance = (self.mDragPosition - event.pos()).x()
             if -1 <= moveDistance < 0:
-                self.setPix(settings.MOUSE_TO_RIGHT_1)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_RIGHT_1))
             elif -2 <= moveDistance < -1:
-                self.setPix(settings.MOUSE_TO_RIGHT_2)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_RIGHT_2))
             elif moveDistance < -2:
-                self.setPix(settings.MOUSE_TO_RIGHT_3)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_RIGHT_3))
 
             elif 0 < moveDistance <= 1:
-                self.setPix(settings.MOUSE_TO_LEFT_1)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_LEFT_1))
             elif 1 < moveDistance <= 2:
-                self.setPix(settings.MOUSE_TO_LEFT_2)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_LEFT_2))
             elif 2 < moveDistance:
-                self.setPix(settings.MOUSE_TO_LEFT_3)
+                self.setPix(str(self.imgDir / settings.MOUSE_TO_LEFT_3))
 
     def mouseDoubleClickEvent(self, QMouseEvent):
         """鼠标双击事件, 进行walk"""
@@ -124,7 +122,7 @@ class DesktopPet(QWidget):
             self.move(self.pos().x() - 5, self.pos().y())
             if self.pos().x() < -100:
                 self.move(self.desktop.availableGeometry().bottomRight().x(), self.pos().y())
-            self.setPix(walk[i])
+            self.setPix(str(self.imgDir / walk[i]))
             QApplication.processEvents()
             time.sleep(0.5)
             if i == 1:
@@ -164,13 +162,13 @@ class DesktopPet(QWidget):
 class Action(object):
     """动作类, 读取action.py下的列表, 去img文件下下寻找对应的图片"""
     def __init__(self):
-        self.imgDir = "./img"
+        self.imgDir = settings.SETUP_DIR / "img"
         self.actionList = []
         self.picturesList = []
 
     def createPicture(self):
         """读取图片"""
-        module = importlib.import_module("core.action")
+        module = action
         for i in dir(module):
             if i.startswith("__"):
                 continue
@@ -181,7 +179,7 @@ class Action(object):
         """将图片转成Pixmap"""
         for indexI, i in enumerate(self.picturesList):
             for indexJ, j in enumerate(i):
-                self.picturesList[indexI][indexJ] = QPixmap(f"{self.imgDir}/{j}")
+                self.picturesList[indexI][indexJ] = QPixmap(str(self.imgDir / j))
 
     def getAllAction(self):
         """获取所有的动作集, 返回嵌套列表"""

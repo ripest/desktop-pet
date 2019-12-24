@@ -1,57 +1,3 @@
-# Desktop pet python implementation
-
-### Procedure description:
-
-Table PET: the desktop pet implemented by Python plays an action in 10 seconds by default. Double click the left mouse button to activate the walking function, and click again to cancel the walking. The right mouse button has some simple system functions, which will be added later
-The default image is reproduced from @ xgbghost (Weibo)
-Of course, if you have your own pictures, you can replace them or add more actions
-
-### Environment and usage
-
-Based on Python 3.7, pyqt5
-
-`Python run.py` can run the table pet, which is executed by the daemons by default. The input and output of the standard data are in the stderr, stdin, and stdout files
-
-`--no-daemons` starts in a non daemons mode
-
-`--tray`  tray function
-
-### Document description
-`core/action.py` file is every action of the table pet (the real file is under the 'img' folder),
-
-You can add actions, you can also reduce actions
-If you add actions, you can put the pictures of one frame in the 'img' folder, and then configure the address in 'action. Py', and the program will read it automatically
-
-`core/setting.py` file is a configuration file. The description is as follows
-
-```Yaml
-MOVIE_TIME_INTERVAL: the playback interval of each animation, in seconds
-
-INIT_PICTURE: the default picture when the table pet is still
-
-TRAY_ICON: system tray icon
-
-ICON: picture of program
-
-MOUSE_TO_LEFT_*: the action of mouse sliding left, three frames in total
-
-MOUSE_TO_RIGHT_*: the action of right mouse slide, three frames in total
-
-Walk: the action of walking, 2 frames in total, the redundant will not be played
-```
-
-
-
-###Contact information
-
-QQ: 469554659
-
-email: 469554659@qq.com
-
-If you have new ideas or problems with the operation, please contact me
-
-
-
 # 桌面宠物 python实现
 
 ### 程序说明:
@@ -59,12 +5,14 @@ If you have new ideas or problems with the operation, please contact me
  默认的图片是转载自 @XGBGHOST (微博)
 当然, 如果你有自己的图片,可以进行替换, 也可以增加动作
 
-### 环境及使用
+### 环境及使用, 打包方法
 基于python3.7, PyQt5
-
-`python run.py` 即可运行 桌宠默认以守护进程来执行, 标椎输入输出在 stderr, stdin, stdout 文件里
-`--no-daemon`  用非守护进程方式启动
+###### 运行
+`python run.py` 即可运行 
+`--daemon`  用非守护进程方式启动
 `--tray` 启动托盘功能
+###### 打包
+`pyinstaller run.spec`  只在mac上测试过, windowns未知
 
 ### 文件说明
 `core/action.py` 文件下是 桌宠每一个动作(真正的文件在`img`文件夹下), 

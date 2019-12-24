@@ -1,5 +1,6 @@
 import os
 import sys
+from core.conf import settings
 
 def daemonize():
     pid = os.fork()
@@ -15,9 +16,9 @@ def daemonize():
     sys.stdout.flush()
     sys.stdin.flush()
     sys.stderr.flush()
-    si = open("./stdin", 'a+')
-    so = open("./stdout", 'a+')
-    se = open("./stderr", 'a+')
+    si = open(str(settings.SETUP_DIR / "stdin"), 'a+')
+    so = open(str(settings.SETUP_DIR / "stdout"), 'a+')
+    se = open(str(settings.SETUP_DIR / "stderr"), 'a+')
     os.dup2(si.fileno(), sys.stdin.fileno())
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
