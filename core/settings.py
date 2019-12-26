@@ -17,3 +17,7 @@ MOUSE_TO_RIGHT_3 = "left3.png"
 
 WALK = ["walk1.png", "walk2.png"]
 
+SHUTDOWN = "shutdown.png"
+FALL = "fall.png"
+EXIT = "exit.png"
+

@@ -3,7 +3,7 @@ import time
 
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
-from PyQt5.QtWidgets import QWidget, QMenu, QApplication, QSystemTrayIcon
+from PyQt5.QtWidgets import QWidget, QMenu, QApplication, QSystemTrayIcon, QAction
 
 from core import action
 from core.ability import Ability
@@ -12,15 +12,29 @@ from core.conf import settings
 
 class DesktopPet(QWidget):
     """桌宠核心类"""
+
     def __init__(self, parent=None, tray=False):
         super(DesktopPet, self).__init__(parent)
         self.imgDir = settings.SETUP_DIR / "img"
         self.walking = False
-        self.busy = False
+        self.playing = False
+        self.draging = False
+        self.autoFalling = False
+        self.tray = tray
         self.initUI()
         self.startMovie()
-        if tray:
-            self.trayMenu()   # 系统托盘
+
+    def initUI(self):
+        """初始化窗口"""
+        self.setWindowIcon(QIcon(str(self.imgDir / settings.ICON)))
+        self.desktop = QApplication.desktop()
+        self.setWindowFlags(
+            Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)  # 背景透明
+
+        if self.tray:
+            self.trayMenu()  # 系统托盘
 
     def trayMenu(self):
         """显示系统托盘"""
@@ -28,62 +42,31 @@ class DesktopPet(QWidget):
         tray.setIcon(QIcon(str(self.imgDir / settings.TRAY_ICON)))
         tray.show()
 
-    def initUI(self):
-        """初始化窗口"""
-        self.setWindowIcon(QIcon(str(self.imgDir / settings.ICON)))
-        self.desktop = QApplication.desktop()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)  # 背景透明
-
-        self.welcomePage()
-
-    def startMovie(self):
-        """定义定时器,通过定时器完成动画功能"""
-        self.allActions = Action().getAllAction()
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.action)
-        self.timer.start(settings.MOVIE_TIME_INTERVAL * 1000)
-
-    def action(self):
-        """加载动作"""
-        if self.busy:
-            return
-        self.timer.stop()
-        self.busy = True
-        currentMovie = random.choice(self.allActions)
-        for i in range(len(currentMovie)):
-            pix = currentMovie[i]
-            self.setPix(pix)
-            QApplication.processEvents()
-            time.sleep(0.5)
-        self.timer.start()
-        self.busy = False
-        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
-
-    def welcomePage(self):
-        """开始"""
-        rect = self.desktop.availableGeometry()
-        self.move(rect.right()-200, rect.height()-200)
-        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
-
     def mousePressEvent(self, event):
         """鼠标单击事件"""
-        if self.busy:
+        if self.playing:
             return
         if event.button() == Qt.LeftButton:
-            self.walking = False     # 单击 关闭跑步
-            self.busy = True
+            self.walking = False  # 单击 关闭跑步
+            self.draging = True
             self.mDragPosition = event.globalPos() - self.pos()
             event.accept()
 
     def mouseReleaseEvent(self, event):
         """鼠标释放事件"""
+        # 双击鼠标 启动walk, 所以释放的时候要判断是否是双击的情况
         if self.walking is False:
-            self.setPix(str(self.imgDir / settings.INIT_PICTURE))
-            self.busy = False
+            if self.autoFalling:
+                self.fallingBody((event.globalPos() - self.mDragPosition).x(), event.globalPos().y())
+            else:
+                self.setPix(str(self.imgDir / settings.INIT_PICTURE))
+
+            self.draging = False
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件"""
+        if self.playing or self.walking:
+            return
         if Qt.LeftButton:
             self.move(event.globalPos() - self.mDragPosition)
             moveDistance = (self.mDragPosition - event.pos()).x()
@@ -103,7 +86,7 @@ class DesktopPet(QWidget):
 
     def mouseDoubleClickEvent(self, QMouseEvent):
         """鼠标双击事件, 进行walk"""
-        if self.busy:
+        if self.playing:
             return
         if Qt.LeftButton == QMouseEvent.button():
             self.walking = True
@@ -114,33 +97,24 @@ class DesktopPet(QWidget):
         #  如何在walk 的时候关闭, 会导致程序坞的图标不消失,所以要先停掉walk
         self.walking = False
 
-    def walk(self):
-        """桌宠 走路"""
-        walk = settings.WALK
-        i = 0
-        while self.walking is True:
-            self.move(self.pos().x() - 5, self.pos().y())
-            if self.pos().x() < -100:
-                self.move(self.desktop.availableGeometry().bottomRight().x(), self.pos().y())
-            self.setPix(str(self.imgDir / walk[i]))
-            QApplication.processEvents()
-            time.sleep(0.5)
-            if i == 1:
-                i = 0
-            else:
-                i += 1
-
     def contextMenuEvent(self, e):
         """右键菜单"""
-        cmenu = QMenu(self)
+        menu = QMenu(self)
         ability = Ability(self)
-        act4 = cmenu.addAction("关机")
-        act5 = cmenu.addAction("退出")
-        action = cmenu.exec_(self.mapToGlobal(e.pos()))
-        if action == act5:
-            self.close()
-        elif action == act4:
-            ability.shutdown()
+
+        fall = menu.addAction("关闭自由落体" if self.autoFalling else "开启自由落体")
+        fall.setIcon(QIcon(str(self.imgDir / settings.FALL)))
+        fall.triggered.connect(ability.fall)
+
+        shutdown = menu.addAction("关机")
+        shutdown.triggered.connect(ability.shutdown)
+        shutdown.setIcon(QIcon(str(self.imgDir / settings.SHUTDOWN)))
+
+        close = menu.addAction("退出")
+        close.triggered.connect(self.close)
+        close.setIcon(QIcon(str(self.imgDir / settings.EXIT)))
+
+        menu.exec_(e.globalPos())
 
     def paintEvent(self, QPaintEvent):
         """绘图"""
@@ -158,9 +132,67 @@ class DesktopPet(QWidget):
         self.setMask(self.pix.mask())
         self.update()
 
+    def startMovie(self):
+        """定义定时器,通过定时器完成动画功能"""
+        self.allActions = Action().getAllAction()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.action)
+        self.timer.start(settings.MOVIE_TIME_INTERVAL * 1000)
+
+    def action(self):
+        """加载动作"""
+        if self.draging or self.walking:
+            return
+        self.timer.stop()
+        self.playing = True
+        currentMovie = random.choice(self.allActions)
+        for i in range(len(currentMovie)):
+            pix = currentMovie[i]
+            self.setPix(pix)
+            QApplication.processEvents()
+            time.sleep(0.5)
+        self.timer.start()
+        self.playing = False
+        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
+
+    def welcomePage(self):
+        """欢迎页面"""
+        self.fallingBody(self.desktop.availableGeometry().bottomRight().x() - 300, 0)
+
+    def walk(self):
+        """桌宠 走路"""
+        walk = settings.WALK
+        i = 0
+        while self.walking is True:
+            self.move(self.pos().x() - 5, self.pos().y())
+            if self.pos().x() < -128:
+                self.move(
+                    self.desktop.availableGeometry().bottomRight().x() - 50,
+                    self.pos().y(),
+                )
+            self.setPix(str(self.imgDir / walk[i]))
+            QApplication.processEvents()
+            time.sleep(0.5)
+            if i == 1:
+                i = 0
+            else:
+                i += 1
+
+    def fallingBody(self, posX, posY):
+        """宠物自由落体, posX, posY 是起始的位置"""
+        rect = self.desktop.availableGeometry()
+        while self.pos().y() < rect.height() - 200:
+            self.move(posX, posY)
+            self.setPix(str(self.imgDir / "shime4.png"))
+            QApplication.processEvents()
+            time.sleep(0.01)
+            posY += 10
+        self.setPix(str(self.imgDir / settings.INIT_PICTURE))
+
 
 class Action(object):
     """动作类, 读取action.py下的列表, 去img文件下下寻找对应的图片"""
+
     def __init__(self):
         self.imgDir = settings.SETUP_DIR / "img"
         self.actionList = []
@@ -186,5 +218,3 @@ class Action(object):
         self.createPicture()
         self.createQpixmap()
         return self.picturesList
-
-

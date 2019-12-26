@@ -21,3 +21,13 @@ class Ability(object):
                 child.sendline(password)
             elif self.system == "nt":
                 pexpect.spawn("sudo shutdown -s -t 0")
+
+    def fall(self):
+        if self.pet.sender().text() == "开启自由落体":
+            self.pet.autoFalling = True
+            self.pet.sender().setText("关闭自由落体")
+
+        elif self.pet.sender().text() == "关闭自由落体":
+            self.pet.autoFalling = False
+            self.pet.sender().setText("开启自由落体")
+
