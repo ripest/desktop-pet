@@ -2,6 +2,7 @@ import os
 import sys
 from core.conf import settings
 
+
 def daemonize():
     pid = os.fork()
     if pid > 0:
