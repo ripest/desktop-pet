@@ -33,5 +33,5 @@ exe = EXE(pyz,
           console=False )
 app = BUNDLE(exe,
              name='desktop-pet.app',
-             icon='',
+             icon='/User/zyz/Desktop/desktop-pets/img/init.png',
              bundle_identifier=None)

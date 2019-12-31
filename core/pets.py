@@ -99,8 +99,18 @@ class DesktopPet(QWidget):
 
     def contextMenuEvent(self, e):
         """右键菜单"""
+        if self.walking or self.playing or self.draging:
+            return
         menu = QMenu(self)
         ability = Ability(self)
+
+        wechat = menu.addAction("打开微信")
+        wechat.triggered.connect(ability.openWechat)
+        wechat.setIcon(QIcon(str(self.imgDir / settings.WECHAT)))
+
+        wechat = menu.addAction("打开计算器")
+        wechat.triggered.connect(ability.calculator)
+        wechat.setIcon(QIcon(str(self.imgDir / settings.CALCULATION)))
 
         fall = menu.addAction("关闭自由落体" if self.autoFalling else "开启自由落体")
         fall.setIcon(QIcon(str(self.imgDir / settings.FALL)))

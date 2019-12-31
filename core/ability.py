@@ -1,5 +1,10 @@
+from time import sleep
+
 import pexpect
 import os
+import subprocess
+
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox, QInputDialog
 
 
@@ -31,3 +36,24 @@ class Ability(object):
             self.pet.autoFalling = False
             self.pet.sender().setText("开启自由落体")
 
+    def openWechat(self):
+        if self.system == "posix":
+            self.pet.thread = Thread(app="wechat")
+            self.pet.thread.start()
+
+    def calculator(self):
+        if self.system == "posix":
+            self.pet.thread = Thread(app="calculator")
+            self.pet.thread.start()
+
+
+class Thread(QThread):
+    def __init__(self, app=None):
+        super(Thread, self).__init__()
+        self.app = app
+
+    def run(self):
+        if self.app == "wechat":
+            subprocess.call(["nohup", "/Applications/WeChat.app/Contents/MacOS/WeChat", "&&", "exit"])
+        elif self.app == "calculator":
+            subprocess.call(["nohup", "/Applications/Calculator.app/Contents/MacOS/Calculator", "&&", "exit"])

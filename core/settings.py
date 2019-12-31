@@ -20,4 +20,6 @@ WALK = ["walk1.png", "walk2.png"]
 SHUTDOWN = "shutdown.png"
 FALL = "fall.png"
 EXIT = "exit.png"
+WECHAT = "wechat.png"
+CALCULATION = "calculation.png"
 
