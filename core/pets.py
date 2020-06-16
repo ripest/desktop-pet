@@ -3,14 +3,14 @@ import time
 
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
-from PyQt5.QtWidgets import QWidget, QMenu, QApplication, QSystemTrayIcon, QAction
+from PyQt5.QtWidgets import QWidget, QMenu, QApplication, QSystemTrayIcon, QAction, QMainWindow
 
 from core import action
 from core.ability import Ability
 from core.conf import settings
 
 
-class DesktopPet(QWidget):
+class DesktopPet(QMainWindow):
     """桌宠核心类"""
 
     def __init__(self, parent=None, tray=False):
@@ -20,6 +20,7 @@ class DesktopPet(QWidget):
         self.playing = False
         self.draging = False
         self.autoFalling = False
+        self.contenting = False
         self.tray = tray
         self.initUI()
         self.startMovie()
@@ -101,6 +102,7 @@ class DesktopPet(QWidget):
         """右键菜单"""
         if self.walking or self.playing or self.draging:
             return
+        self.contenting = True
         menu = QMenu(self)
         ability = Ability(self)
 
@@ -108,23 +110,16 @@ class DesktopPet(QWidget):
         wechat.triggered.connect(ability.openWechat)
         wechat.setIcon(QIcon(str(self.imgDir / settings.WECHAT)))
 
-        wechat = menu.addAction("打开计算器")
-        wechat.triggered.connect(ability.calculator)
-        wechat.setIcon(QIcon(str(self.imgDir / settings.CALCULATION)))
-
         fall = menu.addAction("关闭自由落体" if self.autoFalling else "开启自由落体")
-        fall.setIcon(QIcon(str(self.imgDir / settings.FALL)))
         fall.triggered.connect(ability.fall)
-
-        shutdown = menu.addAction("关机")
-        shutdown.triggered.connect(ability.shutdown)
-        shutdown.setIcon(QIcon(str(self.imgDir / settings.SHUTDOWN)))
+        fall.setIcon(QIcon(str(self.imgDir / settings.FALL)))
 
         close = menu.addAction("退出")
         close.triggered.connect(self.close)
         close.setIcon(QIcon(str(self.imgDir / settings.EXIT)))
 
         menu.exec_(e.globalPos())
+        self.contenting = False
 
     def paintEvent(self, QPaintEvent):
         """绘图"""
@@ -151,7 +146,7 @@ class DesktopPet(QWidget):
 
     def action(self):
         """加载动作"""
-        if self.draging or self.walking:
+        if self.draging or self.walking or self.contenting:
             return
         self.timer.stop()
         self.playing = True

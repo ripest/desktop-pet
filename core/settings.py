@@ -21,5 +21,7 @@ SHUTDOWN = "shutdown.png"
 FALL = "fall.png"
 EXIT = "exit.png"
 WECHAT = "wechat.png"
+TERMINAL = "terminal.png"
 CALCULATION = "calculation.png"
+CONFIG = "config.png"
 
