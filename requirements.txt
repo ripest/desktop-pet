@@ -12,7 +12,7 @@ pexpect==4.7.0
 pickleshare==0.7.5
 prompt-toolkit==3.0.2
 ptyprocess==0.6.0
-Pygments==2.5.2
+Pygments==2.7.4
 PyInstaller==3.5
 PyQt5==5.13.2
 PyQt5-sip==12.7.0
